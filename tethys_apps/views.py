@@ -15,8 +15,8 @@ from django.core.mail import send_mail
 from tethys_apps.base.app_base import TethysAppBase
 from tethys_apps.models import TethysApp
 from tethys_apps.utilities import get_active_app
-
-from tethys_compute.models import TethysJob
+from tethys_compute.models import TethysJob, DaskJob
+from tethys_config.models import AppProxyInstance
 
 
 @login_required()
@@ -36,6 +36,22 @@ def library(request):
         else:
             if request.user.is_staff:
                 unconfigured_apps.append(app)
+
+    # Fetch any proxied apps (these are always assumed to be configured)
+    proxied_apps = AppProxyInstance.objects.all()
+
+    for app in proxied_apps:
+        new_app = {
+            'show_in_apps_library': True,
+            'enabled': True,
+            'proxied': True,
+            'url': getattr(app, 'endpoint'),
+            'icon': getattr(app, 'logo_url'),
+            'name': getattr(app, 'name'),
+            'description': getattr(app, 'description'),
+            'tags': []
+        }
+        configured_apps.append(new_app)
 
     # Define the context object
     context = {'apps': {'configured': configured_apps, 'unconfigured': unconfigured_apps}}
