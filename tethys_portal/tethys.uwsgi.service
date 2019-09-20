@@ -1,0 +1,16 @@
+[Unit]
+Description=Tethys uWSGI
+After=syslog.target
+
+[Service]
+ExecStartPre=/bin/bash -c 'mkdir -p /run/uwsgi; chown www-data:www-data /run/uwsgi'
+ExecStart=/media/root/tethys/main/tethys/miniconda/envs/tethys/bin/uwsgi --yaml /media/root/tethys/main/tethys/src/tethys_portal/tethys_uwsgi.yml --uid www-data --gid www-data
+ExecStartPost=/bin/bash -c 'chown -R www-data:www-data /run/uwsgi'
+Restart=always
+KillSignal=SIGQUIT
+Type=notify
+StandardError=syslog
+NotifyAccess=all
+
+[Install]
+WantedBy=multi-user.target

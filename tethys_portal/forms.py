@@ -35,7 +35,7 @@ class LoginForm(forms.Form):
             attrs={'placeholder': 'Password'}
         )
     )
-    captcha = CaptchaField(label='')
+#    captcha = CaptchaField(label='')
 
 
 class RegisterForm(forms.ModelForm):
@@ -84,7 +84,7 @@ class RegisterForm(forms.ModelForm):
         )
     )
 
-    captcha = CaptchaField(label='')
+#    captcha = CaptchaField(label='')
 
     class Meta:
         model = User
