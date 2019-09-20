@@ -34,7 +34,7 @@ def login_required(function=None, redirect_field_name=REDIRECT_FIELD_NAME, login
         def wrapper(request, *args, **kwargs):
 
             if not getattr(settings, 'ENABLE_OPEN_PORTAL', False):
-                from tethys_sdk.permissions import login_required as lr
+                from django.contrib.auth.decorators import login_required as lr
                 dec = lr(function=function, redirect_field_name=redirect_field_name, login_url=login_url)
                 controller = dec(controller_func)
                 return controller(request, *args, **kwargs)
