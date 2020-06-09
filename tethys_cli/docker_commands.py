@@ -21,6 +21,7 @@ import docker
 from docker.types import Mount
 from docker.errors import NotFound as DockerNotFound
 from tethys_cli.cli_colors import write_pretty_output
+from tethys_apps.utilities import get_tethys_home_dir
 
 
 __all__ = ['docker_init', 'docker_start',
@@ -59,7 +60,8 @@ class ContainerMetadata(ABC):
     input = None
     name = None
     display_name = None
-    image = None
+    image_name = None
+    tag = 'latest'
     host_port = None
     container_port = None
     default_host = '127.0.0.1'
@@ -133,6 +135,10 @@ class ContainerMetadata(ABC):
         )
 
     @property
+    def image(self):
+        return f'{self.image_name}:{self.tag}'
+
+    @property
     @abstractmethod
     def endpoint(self):
         """URL for accessing the service running in the container."""
@@ -198,7 +204,7 @@ class PostGisContainerMetadata(ContainerMetadata):
     input = 'postgis'
     name = 'tethys_postgis'
     display_name = 'PostGIS/Database'
-    image = 'ciwater/postgis:2.1.2'
+    image_name = 'mdillon/postgis'
     host_port = 5435
     container_port = 5432
 
@@ -213,9 +219,7 @@ class PostGisContainerMetadata(ContainerMetadata):
         options = super().default_container_options()
         options.update(
             environment=dict(
-                TETHYS_DEFAULT_PASS='pass',
-                TETHYS_DB_MANAGER_PASS='pass',
-                TETHYS_SUPER_PASS='pass',
+                POSTGRES_PASSWORD='mysecretpassword',
             ),
         )
         return options
@@ -226,27 +230,16 @@ class PostGisContainerMetadata(ContainerMetadata):
 
         # User environmental variables
         if not defaults:
-            write_pretty_output("Provide passwords for the three Tethys database users or press enter to accept the "
-                                "default passwords shown in square brackets:")
+            write_pretty_output("Tethys uses the mdillon/postgis image on Docker Hub. "
+                                "See: https://hub.docker.com/r/mdillon/postgis/")
 
-            default_password = 'pass'
-
-            # tethys_default
-            prompt = 'Password for "tethys_default" database user'
-            tethys_default_pass = UserInputHelper.get_verified_password(prompt, default_password)
-
-            # tethys_db_manager
-            prompt = 'Password for "tethys_db_manager" database user'
-            tethys_db_manager_pass = UserInputHelper.get_verified_password(prompt, default_password)
-
-            # tethys_super
-            prompt = 'Password for "tethys_super" database user'
-            tethys_super_pass = UserInputHelper.get_verified_password(prompt, default_password)
+            # POSTGRES_PASSWORD
+            prompt = 'Password for postgres user (i.e. POSTGRES_PASSWORD)'
+            postgres_password = \
+                UserInputHelper.get_verified_password(prompt, options['environment']['POSTGRES_PASSWORD'])
 
             options['environment'].update(
-                TETHYS_DEFAULT_PASS=tethys_default_pass,
-                TETHYS_DB_MANAGER_PASS=tethys_db_manager_pass,
-                TETHYS_SUPER_PASS=tethys_super_pass
+                POSTGRES_PASSWORD=postgres_password,
             )
 
         return options
@@ -256,7 +249,8 @@ class GeoServerContainerMetadata(ContainerMetadata):
     input = 'geoserver'
     name = 'tethys_geoserver'
     display_name = 'GeoServer'
-    image = 'ciwater/geoserver:2.8.2-clustered'
+    image_name = 'ciwater/geoserver'
+    tag = '2.8.2-clustered'
     host_port = 8181
     container_port = 8080  # only for backwards compatibility with non-clustered containers
 
@@ -416,7 +410,7 @@ class GeoServerContainerMetadata(ContainerMetadata):
             )
 
             if mount_data_dir.lower() == 'y':
-                tethys_home = os.environ.get('TETHYS_HOME', os.path.expanduser('~/tethys/'))
+                tethys_home = get_tethys_home_dir()
                 default_mount_location = os.path.join(tethys_home, 'geoserver', 'data')
                 gs_data_volume = '/var/geoserver/data'
                 mount_location = UserInputHelper.get_valid_directory_input(
@@ -433,7 +427,8 @@ class N52WpsContainerMetadata(ContainerMetadata):
     input = 'wps'
     name = 'tethys_wps'
     display_name = '52 North WPS'
-    image = 'ciwater/n52wps:3.3.1'
+    image_name = 'ciwater/n52wps'
+    tag = '3.3.1'
     host_port = 8282
     container_port = 8080
 
@@ -486,6 +481,101 @@ class N52WpsContainerMetadata(ContainerMetadata):
                 USERNAME=UserInputHelper.get_input_with_default('Admin Username', 'wps'),
                 PASSWORD=UserInputHelper.get_verified_password('Admin Password', 'wps')
             )
+
+        return options
+
+
+class ThreddsContainerMetadata(ContainerMetadata):
+    input = 'thredds'
+    name = 'tethys_thredds'
+    display_name = 'THREDDS'
+    image_name = 'unidata/thredds-docker'
+    tag = '4.6.13'
+    host_port = 8383
+    container_port = 8080
+
+    @property
+    def endpoint(self):
+        return 'http://{host}:{port}/thredds/'.format(
+            host=self.default_host,
+            port=self.host_port
+        )
+
+    def default_container_options(self):
+        options = super().default_container_options()
+        options.update(
+            environment=dict(
+                TDM_PW='CHANGEME!',
+                TDS_HOST='http://localhost',
+                THREDDS_XMX_SIZE='4G',
+                THREDDS_XMS_SIZE='1G',
+                TDM_XMX_SIZE='6G',
+                TDM_XMS_SIZE='1G'
+            ),
+            volumes=[
+                '/usr/local/tomcat/content/thredds:rw'
+            ],
+        )
+        return options
+
+    def get_container_options(self, defaults):
+        # Default environmental vars
+        options = self.default_container_options()
+
+        if not defaults:
+            environment = dict()
+
+            write_pretty_output("Provide configuration options for the THREDDS container or or press enter to "
+                                "accept the defaults shown in square brackets: ")
+
+            environment['TDM_PW'] = UserInputHelper.get_verified_password(
+                prompt='TDM Password',
+                default=options['environment']['TDM_PW'],
+            )
+
+            environment['TDS_HOST'] = UserInputHelper.get_input_with_default(
+                prompt='TDS Host',
+                default=options['environment']['TDS_HOST'],
+            )
+
+            environment['THREDDS_XMX_SIZE'] = UserInputHelper.get_input_with_default(
+                prompt='TDS JVM Max Heap Size',
+                default=options['environment']['THREDDS_XMX_SIZE'],
+            )
+
+            environment['THREDDS_XMS_SIZE'] = UserInputHelper.get_input_with_default(
+                prompt='TDS JVM Min Heap Size',
+                default=options['environment']['THREDDS_XMS_SIZE'],
+            )
+
+            environment['TDM_XMX_SIZE'] = UserInputHelper.get_input_with_default(
+                prompt='TDM JVM Max Heap Size',
+                default=options['environment']['TDM_XMX_SIZE'],
+            )
+
+            environment['TDM_XMS_SIZE'] = UserInputHelper.get_input_with_default(
+                prompt='TDM JVM Min Heap Size',
+                default=options['environment']['TDM_XMS_SIZE'],
+            )
+
+            options.update(environment=environment)
+
+            mount_data_dir = UserInputHelper.get_valid_choice_input(
+                prompt='Bind the THREDDS data directory to the host?',
+                choices=['y', 'n'],
+                default='y',
+            )
+
+            if mount_data_dir.lower() == 'y':
+                tethys_home = get_tethys_home_dir()
+                default_mount_location = os.path.join(tethys_home, 'thredds')
+                thredds_data_volume = '/usr/local/tomcat/content/thredds'
+                mount_location = UserInputHelper.get_valid_directory_input(
+                    prompt='Specify location to bind the THREDDS data directory',
+                    default=default_mount_location
+                )
+                mounts = [Mount(thredds_data_volume, mount_location, type='bind')]
+                options['host_config'].update(mounts=mounts)
 
         return options
 
@@ -885,7 +975,10 @@ def log_pull_stream(stream):
                         for row, message in enumerate(rows):
                             message += ' ' * number_of_columns
                             message = message[:number_of_columns - 1]
-                            stdscr.addstr(row, 0, message)
+                            try:
+                                stdscr.addstr(row, 0, message)
+                            except curses.error:
+                                pass
 
                         stdscr.refresh()
 

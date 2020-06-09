@@ -11,11 +11,13 @@ channels:
 - defaults
 
 dependencies:
-- python
+- python=3.7
+- pip
 - tethys_dataset_services>=2.0.0
-- django=2.1.*
-- sphinx
-- sphinx_rtd_theme
+- django>=2.1
+- sphinx==2.2.0
+- sphinx-argparse
 - pbr
+- sphinxcontrib-napoleon
 - pip:
-    - sphinxcontrib-napoleon
+    - sphinx_materialdesign_theme

@@ -1,7 +1,10 @@
 import unittest
 from unittest import mock
 
+from tethys_sdk.testing import TethysTestCase
+
 from tethys_apps import utilities
+from guardian.shortcuts import assign_perm
 
 
 class TethysAppsUtilitiesTests(unittest.TestCase):
@@ -484,7 +487,7 @@ class TethysAppsUtilitiesTests(unittest.TestCase):
         self.assertIn('was successfully linked to', po_call_args[0][0][0])
 
     @mock.patch('tethys_cli.cli_colors.pretty_output')
-    @mock.patch('tethys_sdk.app_settings.SpatialDatasetServiceSetting')
+    @mock.patch('tethys_sdk.app_settings.SpatialDatasetServiceSetting', __name__='SpatialDatasetServiceSetting')
     @mock.patch('tethys_services.models.SpatialDatasetService')
     @mock.patch('tethys_apps.models.TethysApp')
     def test_link_service_to_app_setting_spatial_link_does_not_exist(self, mock_app, mock_service, mock_setting,
@@ -509,5 +512,109 @@ class TethysAppsUtilitiesTests(unittest.TestCase):
         mock_setting.objects.get.assert_called()
         po_call_args = mock_pretty_output().__enter__().write.call_args_list
         self.assertEqual(1, len(po_call_args))
-        self.assertIn('with ID/Name', po_call_args[0][0][0])
+        self.assertIn('A SpatialDatasetServiceSetting with ID/Name', po_call_args[0][0][0])
         self.assertIn('does not exist.', po_call_args[0][0][0])
+
+    @mock.patch('tethys_apps.utilities.os')
+    def test_get_tethys_home_dir__default_env_name__tethys_home_not_defined(self, mock_os):
+        env_tethys_home = None
+        conda_default_env = 'tethys'  # Default Tethys environment name
+        default_tethys_home = '/home/tethys/.tethys'
+
+        mock_os.environ.get.side_effect = [env_tethys_home, conda_default_env]  # [TETHYS_HOME, CONDA_DEFAULT_ENV]
+        mock_os.path.expanduser.return_value = default_tethys_home
+
+        ret = utilities.get_tethys_home_dir()
+
+        mock_os.environ.get.assert_any_call('TETHYS_HOME')
+        mock_os.environ.get.assert_any_call('CONDA_DEFAULT_ENV')
+        mock_os.path.expanduser.assert_called_with('~/.tethys')
+
+        # Returns default tethys home environment
+        self.assertEqual(default_tethys_home, ret)
+
+    @mock.patch('tethys_apps.utilities.os')
+    def test_get_tethys_home_dir__non_default_env_name__tethys_home_not_defined(self, mock_os):
+        env_tethys_home = None
+        conda_default_env = 'foo'  # Non-default Tethys environment name
+        default_tethys_home = '/home/tethys/.tethys'
+
+        mock_os.environ.get.side_effect = [env_tethys_home, conda_default_env]  # [TETHYS_HOME, CONDA_DEFAULT_ENV]
+        mock_os.path.expanduser.return_value = default_tethys_home
+
+        ret = utilities.get_tethys_home_dir()
+
+        mock_os.environ.get.assert_any_call('TETHYS_HOME')
+        mock_os.environ.get.assert_any_call('CONDA_DEFAULT_ENV')
+        mock_os.path.expanduser.assert_called_with('~/.tethys')
+        mock_os.path.join.assert_called_with(default_tethys_home, conda_default_env)
+
+        # Returns joined path of default tethys home path and environment name
+        self.assertEqual(mock_os.path.join(), ret)
+
+    @mock.patch('tethys_apps.utilities.os')
+    def test_get_tethys_home_dir__tethys_home_defined(self, mock_os):
+        env_tethys_home = '/foo/.bar'
+        conda_default_env = 'foo'
+        mock_os.environ.get.side_effect = [env_tethys_home, conda_default_env]  # [TETHYS_HOME, CONDA_DEFAULT_ENV]
+
+        ret = utilities.get_tethys_home_dir()
+
+        mock_os.environ.get.assert_called_once_with('TETHYS_HOME')
+        mock_os.path.expanduser.assert_not_called()
+
+        # Returns path defined by TETHYS_HOME environment variable
+        self.assertEqual(env_tethys_home, ret)
+
+    @mock.patch('tethys_apps.utilities.tethys_log')
+    @mock.patch('tethys_apps.utilities.os')
+    def test_get_tethys_home_dir__exception(self, mock_os, mock_tethys_log):
+        env_tethys_home = None
+        conda_default_env = 'foo'  # Non-default Tethys environment name
+        default_tethys_home = '/home/tethys/.tethys'
+
+        mock_os.environ.get.side_effect = [env_tethys_home, conda_default_env]  # [TETHYS_HOME, CONDA_DEFAULT_ENV]
+        mock_os.path.expanduser.return_value = default_tethys_home
+
+        mock_os.path.join.side_effect = Exception
+
+        ret = utilities.get_tethys_home_dir()
+
+        mock_os.environ.get.assert_any_call('TETHYS_HOME')
+        mock_os.environ.get.assert_any_call('CONDA_DEFAULT_ENV')
+        mock_os.path.expanduser.assert_called_with('~/.tethys')
+        mock_os.path.join.assert_called_with(default_tethys_home, conda_default_env)
+        mock_tethys_log.warning.assert_called()
+
+        # Returns default tethys home environment path
+        self.assertEqual(default_tethys_home, ret)
+
+
+class TestTethysAppsUtilitiesTethysTestCase(TethysTestCase):
+    def set_up(self):
+        self.c = self.get_test_client()
+        self.user = self.create_test_user(username="joe", password="secret", email="joe@some_site.com")
+
+    def tear_down(self):
+        self.user.delete()
+
+    @mock.patch('django.conf.settings')
+    def test_user_can_access_app(self, mock_settings):
+        mock_settings.ENABLE_OPEN_PORTAL = False
+        user = self.user
+        app = utilities.get_active_app(url='/apps/test-app')
+
+        # test no permission
+        result1 = utilities.user_can_access_app(user, app)
+        self.assertFalse(result1)
+
+        # test permission
+        assign_perm(f'{app.package}:access_app', user, app)
+
+        result2 = utilities.user_can_access_app(user, app)
+        self.assertTrue(result2)
+
+        # test open portal mode case
+        mock_settings.ENABLE_OPEN_PORTAL = True
+        result3 = utilities.user_can_access_app(user, app)
+        self.assertTrue(result3)

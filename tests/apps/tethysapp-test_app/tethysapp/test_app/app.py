@@ -31,7 +31,9 @@ class TestApp(TethysAppBase):
             UrlMap(
                 name='home',
                 url='test-app/',
-                controller='test_app.controllers.home'
+                controller='test_app.controllers.home',
+                handler='test_app.controllers.home_handler',
+                handler_type='bokeh'
             ),
             UrlMap(
                 name='ws',
@@ -144,6 +146,12 @@ class TestApp(TethysAppBase):
                 description='spatial dataset service for app to use',
                 engine=SpatialDatasetServiceSetting.GEOSERVER,
                 required=True,
+            ),
+            SpatialDatasetServiceSetting(
+                name='primary_thredds',
+                description='spatial dataset service for app to use',
+                engine=SpatialDatasetServiceSetting.THREDDS,
+                required=False,
             ),
         )
 

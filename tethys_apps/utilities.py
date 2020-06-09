@@ -35,8 +35,24 @@ def get_tethys_home_dir():
     Returns:
         str: path to TETHYS_HOME.
     """
-    default = os.path.expanduser('~/.tethys')
-    return os.environ.get('TETHYS_HOME', default)
+    env_tethys_home = os.environ.get('TETHYS_HOME')
+
+    # Return environment value if set
+    if env_tethys_home:
+        return env_tethys_home
+
+    # Initialize to default TETHYS_HOME
+    tethys_home = os.path.expanduser('~/.tethys')
+
+    try:
+        conda_env_name = os.environ.get('CONDA_DEFAULT_ENV')
+        if conda_env_name != 'tethys':
+            tethys_home = os.path.join(tethys_home, conda_env_name)
+    except Exception:
+        tethys_log.warning(f'Running Tethys outside of active Conda environment detected. Using default '
+                           f'TETHYS_HOME "{tethys_home}". Set TETHYS_HOME environment to override.')
+
+    return tethys_home
 
 
 def get_directories_in_tethys(directory_names, with_app_name=False):
@@ -44,7 +60,7 @@ def get_directories_in_tethys(directory_names, with_app_name=False):
     # Locate given directories in tethys apps and extensions.
     Args:
         directory_names: directory to get path to.
-        with_app_name: inlcud the app name if True.
+        with_app_name: include the app name if True.
 
     Returns:
         list: list of paths to directories in apps and extensions.
@@ -140,8 +156,9 @@ def get_app_settings(app):
         dict (linked_settings, unlinked_settings): Dictionary with two keys: linked_settings(list) - list of linked settings, unlinked_settings(list) - list of unlinked settings  # noqa: E501
     """
     from tethys_cli.cli_colors import write_error
-    from tethys_apps.models import (TethysApp, PersistentStoreConnectionSetting, PersistentStoreDatabaseSetting,
-                                    SpatialDatasetServiceSetting, DatasetServiceSetting, WebProcessingServiceSetting,
+    from tethys_apps.models import (TethysApp, TethysExtension, PersistentStoreConnectionSetting,
+                                    PersistentStoreDatabaseSetting, SpatialDatasetServiceSetting,
+                                    DatasetServiceSetting, WebProcessingServiceSetting,
                                     CustomSetting)
 
     try:
@@ -180,7 +197,12 @@ def get_app_settings(app):
         }
 
     except ObjectDoesNotExist:
-        write_error('The app you specified ("{0}") does not exist. Command aborted.'.format(app))
+        try:
+            # Fail silently if the object is an Extension
+            TethysExtension.objects.get(package=app)
+        except ObjectDoesNotExist:
+            # Write an error if the object is not a TethysApp or Extension
+            write_error('The app or extension you specified ("{0}") does not exist. Command aborted.'.format(app))
     except Exception as e:
         write_error(str(e))
         write_error('Something went wrong. Please try again.')
@@ -288,19 +310,9 @@ def link_service_to_app_setting(service_type, service_uid, app_package, setting_
     django.setup()
     from tethys_cli.cli_colors import pretty_output, FG_GREEN, FG_RED
     from tethys_sdk.app_settings import (SpatialDatasetServiceSetting, PersistentStoreConnectionSetting,
-                                         PersistentStoreDatabaseSetting,
+                                         PersistentStoreDatabaseSetting, DatasetServiceSetting,
                                          WebProcessingServiceSetting)
-    from tethys_services.models import (
-        SpatialDatasetService, DatasetService, PersistentStoreService, WebProcessingService)
-
     from tethys_apps.models import TethysApp
-
-    service_type_to_model_dict = {
-        "spatial": SpatialDatasetService,
-        "dataset": DatasetService,
-        "persistent": PersistentStoreService,
-        'wps': WebProcessingService
-    }
 
     setting_type_to_link_model_dict = {
         'ps_database': {
@@ -316,7 +328,7 @@ def link_service_to_app_setting(service_type, service_uid, app_package, setting_
             'service_field': 'spatial_dataset_service'
         },
         'ds_dataset': {
-            'setting_model': SpatialDatasetServiceSetting,
+            'setting_model': DatasetServiceSetting,
             'service_field': 'dataset_service'
         },
         'wps': {
@@ -325,7 +337,7 @@ def link_service_to_app_setting(service_type, service_uid, app_package, setting_
         }
     }
 
-    service_model = service_type_to_model_dict[service_type]
+    service_model = get_service_model_from_type(service_type)
 
     try:
         try:
@@ -335,27 +347,26 @@ def link_service_to_app_setting(service_type, service_uid, app_package, setting_
             service = service_model.objects.get(name=service_uid)
     except ObjectDoesNotExist:
         with pretty_output(FG_RED) as p:
-            p.write('A {0} with ID/Name "{1}" does not exist.'.format(str(service_model), service_uid))
+            p.write(f'A {service_model.__class__.__name__} with ID/Name "{service_uid}" does not exist.')
         return False
 
     try:
         app = TethysApp.objects.get(package=app_package)
     except ObjectDoesNotExist:
         with pretty_output(FG_RED) as p:
-            p.write('A Tethys App with the name "{}" does not exist. Aborted.'.format(app_package))
+            p.write(f'A Tethys App with the name "{app_package}" does not exist. Aborted.')
         return False
 
     try:
         linked_setting_model_dict = setting_type_to_link_model_dict[setting_type]
     except KeyError:
         with pretty_output(FG_RED) as p:
-            p.write('The setting_type you specified ("{0}") does not exist.'
-                    '\nChoose from: "ps_database|ps_connection|ds_spatial"'.format(setting_type))
+            p.write(f'The setting_type you specified ("{setting_type}") does not exist.'
+                    '\nChoose from: "ps_database|ps_connection|ds_spatial"')
         return False
 
     linked_setting_model = linked_setting_model_dict['setting_model']
     linked_service_field = linked_setting_model_dict['service_field']
-
     try:
         try:
             setting_uid = int(setting_uid)
@@ -368,12 +379,34 @@ def link_service_to_app_setting(service_type, service_uid, app_package, setting_
         setattr(setting, linked_service_field, service)
         setting.save()
         with pretty_output(FG_GREEN) as p:
-            p.write('{}:"{}" was successfully linked to {}:"{}" of the "{}" Tethys App'
-                    .format(service.__class__.__name__, service.name, setting.__class__.__name__, setting.name,
-                            app_package))
+            p.write(f'{service.__class__.__name__}:"{service.name}" was successfully linked '
+                    f'to {setting.__class__.__name__}:"{setting.name}" of the "{app_package}" Tethys App')
         return True
     except ObjectDoesNotExist:
         with pretty_output(FG_RED) as p:
             p.write(
-                'A {0} with ID/Name "{1}" does not exist.'.format(str(linked_setting_model), setting_uid))
+                f'A {linked_setting_model.__name__} with ID/Name "{setting_uid}" does not exist.')
         return False
+
+
+def get_service_model_from_type(service_type):
+    from tethys_services.models import (
+        SpatialDatasetService, DatasetService, PersistentStoreService, WebProcessingService)
+
+    service_type_to_model_dict = {
+        "spatial": SpatialDatasetService,
+        "dataset": DatasetService,
+        "persistent": PersistentStoreService,
+        'wps': WebProcessingService
+    }
+
+    return service_type_to_model_dict[service_type]
+
+
+def user_can_access_app(user, app):
+    from django.conf import settings
+
+    if getattr(settings, 'ENABLE_OPEN_PORTAL', False):
+        return True
+    else:
+        return user.has_perm(f'{app.package}:access_app', app)

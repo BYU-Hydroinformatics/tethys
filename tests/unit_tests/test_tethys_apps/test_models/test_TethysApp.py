@@ -88,7 +88,7 @@ class TethysAppTests(TethysTestCase):
 
     def test_settings_prop(self):
         ret = self.test_app.settings
-        self.assertEqual(12, len(ret))
+        self.assertEqual(13, len(ret))
 
         for r in ret:
             self.assertIsInstance(r, TethysAppSetting)
@@ -243,10 +243,6 @@ class TethysAppTests(TethysTestCase):
         self.assertFalse(ret)
 
     def test_configured_prop_not_assigned_exception(self):
-        ds_setting = self.test_app.settings_set.select_subclasses().get(name='primary_ckan')
-        ds_setting.dataset_service = None
-        ds_setting.save()
-
         ret = self.test_app.configured
 
         self.assertFalse(ret)

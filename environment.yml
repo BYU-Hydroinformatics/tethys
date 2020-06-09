@@ -28,7 +28,7 @@ dependencies:
 
 # plotting dependencies
 - plotly
-- bokeh
+- bokeh>=2.0.0*
 
 # external services dependencies
 - tethys_dataset_services>=2.0.0
@@ -36,14 +36,15 @@ dependencies:
 - owslib
 - requests
 - social-auth-app-django
-- dask
+- dask=1.2.*
 - tethys_dask_scheduler>=1.0.2
 - channels
 - service_identity
 - condorpy
+- siphon
 
 # django/plugin dependencies
-- django=2.1.*
+- django=2.2.*
 - django-filter
 - djangorestframework
 - django-bootstrap3
@@ -54,6 +55,7 @@ dependencies:
 - django-session-security
 - django-analytical
 - django-simple-captcha
+- django-recaptcha2
 - social-auth-app-django
 
 # tests dependencies

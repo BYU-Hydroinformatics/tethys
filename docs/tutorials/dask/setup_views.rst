@@ -2,9 +2,9 @@
 Setup Views
 ***********
 
-**Last Updated:** November 2018
+**Last Updated:** November 2019
 
-In this section, you will setup most of the views needed for this app. For a refresher on setting up url maps, controllers, and templates, see: :doc:`../getting_started`.
+In this section, you will setup most of the views needed for this app. For a refresher on setting up url maps, controllers, and templates, see: :ref:`key_concepts_tutorial`.
 
 1. Link URL
 ===========
@@ -373,7 +373,7 @@ Edit :file:`base.html` to be the following:
 
     {% block app_icon %}
       {# The path you provided in your app.py is accessible through the tethys_app.icon context variable #}
-      <img src="{% static tethys_app.icon %}">
+      <img src="{% if 'http' in tethys_app.icon %}{{ tethys_app.icon }}{% else %}{% static tethys_app.icon %}{% endif %}" />
     {% endblock %}
 
     {# The name you provided in your app.py is accessible through the tethys_app.name context variable #}
@@ -418,11 +418,13 @@ Edit :file:`main.css` to be the following:
 If your tethys project does not restart on its own, you may need to do so manually by ending the server with ``ctrl+c``, and then entering the command ``tethys manage start`` again. Now when you navigate to your app page, you should see this:
 
 .. figure:: ../../images/tutorial/NewPostCreateViewsHome.png
+    :width: 900px
     :align: center
 
 In the lower right hand corner is the button to navigate to the jobs table. Click that to navigate to the just created jobs table which should looks like this:
 
 .. figure:: ../../images/tutorial/NewPostCreateViewsJobTable.png
+    :width: 900px
     :align: center
 
 .. tip::

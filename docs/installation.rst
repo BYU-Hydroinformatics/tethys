@@ -2,18 +2,9 @@
 Getting Started
 ***************
 
-**Last Updated:** July 17, 2019
+**Last Updated:** July 2019
 
-This section describes how to get Tethys Platform up and running as a fresh installation for app development. If you are upgrading an existing installation the refer to the :ref:`update_tethys` docs. If you are deploying a production instance of Tethys Portal refer to the :ref:`production_installation` docs. If you want to contribute to the Tethys Platform source code itself then refer to the :ref:`developer_installation` docs.
-
-.. toctree::
-    :maxdepth: 1
-
-    installation/system_requirements
-    installation/update
-    installation/production
-    installation/developer_installation
-
+This section describes how to get Tethys Platform up and running as a fresh installation for app development. If you are upgrading an existing installation then refer to the :ref:`update_tethys` docs. If you are deploying a production instance of Tethys Portal refer to the :ref:`production_installation` docs. If you want to contribute to the Tethys Platform source code itself then refer to the :ref:`developer_installation` docs.
 
 Prerequisites
 -------------
@@ -23,42 +14,33 @@ Tethys Platform requires the `conda packaging system <https://docs.conda.io/en/l
 Also, be sure that the system you are using meets the minimum :ref:`system_reqs`.
 
 
-1. Install the ``tethysplatform`` Conda Package
------------------------------------------------
+1. Install the ``tethys-platform`` Conda Package
+------------------------------------------------
 
-To install the ``tethysplatform`` into a new conda environment then run the following commands::
+To install the ``tethys-platform`` into a new conda environment then run the following commands::
 
-    conda create -n tethys -c tethysplatform -c conda-forge tethysplatform
+    conda create -n tethys -c tethysplatform -c conda-forge tethys-platform
     conda activate tethys
 
 
 .. tip::
 
-    To install a development build of of ``tethysplatform`` prepend the ``tethys/label/dev`` channel to the list of conda channels::
+    To install a development build of of ``tethys-platform`` prepend the ``tethys/label/dev`` channel to the list of conda channels::
 
-        conda create -n tethys -c tethys/label/dev -c tethysplatform -c conda-forge tethysplatform
+        conda create -n tethys -c tethysplatform/label/dev -c tethysplatform -c conda-forge tethys-platform
 
 
     Alternatively, to install from source refer to the :ref:`developer_installation` docs.
 
-2. Create a :file:`settings.py` File
-------------------------------------
+2. Create a :file:`portal_config.yml` File
+------------------------------------------
 
-Tethys requires a :file:`settings.py` file to configure the database and other local settings. To generate a new :file:`settings.py` with default values for your local installation run::
+To add custom configurations such as the database and other local settings you will need to generate a :file:`portal_config.yml` file. To generate a new template :file:`portal_config.yml` run::
 
-    tethys gen settings
+    tethys gen portal_config
 
-You can customize your :file:`settings.py` file when you generate it by passing in command line options. Refer to the :ref:`tethys_gen_cmd` docs to see what options are available.
+You can customize your settings in the :file:`portal_config.yml` file after you generate it by manually editing the file or by using the :ref:`tethys_settings_cmd` command. Refer to the :ref:`tethys_configuration` documentation for more information.
 
-.. tip::
-
-    To see where the :file:`settings.py` file is saved on disk run the following command::
-
-        tethys list -s
-
-    If you want to edit the file manually and have a commandline editor, such as ``vi`` installed then you can run::
-
-        vi $(tethys list -s)
 
 3. Configure the Tethys Database
 --------------------------------
@@ -69,7 +51,7 @@ Tethys Platform requires a PostgreSQL database server. There are several options
 
 .. note::
 
-    The tethys db command (:ref:`tethys_db_cmd`) will create a local database server in the directory specified by the ``DIR`` setting in the ``DATABASES`` section of the :file:`settings.py` file. If the value of ``DIR`` is a relative path then the database server will be created relative to directory specified by the ``TETHYS_HOME`` environment variable. By default ``TETHYS_HOME`` is at `~/.tethys`.
+    The tethys db command (:ref:`tethys_db_cmd`) will create a local database server in the directory specified by the ``DIR`` setting in the ``DATABASES`` section of the :file:`portal_config.yml` file. If the value of ``DIR`` is a relative path then the database server will be created relative to directory specified by the ``TETHYS_HOME`` environment variable. By default ``TETHYS_HOME`` is at `~/.tethys`.
 
     As an alternative to creating a local database server you can also configure a Docker DB server (see :ref:`using_docker`). A local database server is only recommended for development environments. For production environments please refer to :ref:`production_installation`.
 
@@ -95,14 +77,26 @@ This will start up a locally running web server. You can access the Tethys Porta
 5. Next Steps
 -------------
 
-There are several directions that you may want to go from here. Refer to the following sections:
+There are several directions that you may want to go from here.
+
+* Checkout the :doc:`./installation/web_admin_setup` docs to set up your Tethys Portal.
+* For help getting started with docker see :ref:`using_docker`
+* To install your app refer to the :ref:`app_installation`
+* You also may want to jump over to the :ref:`tutorials` to begin developing your first app.
+
+
+Related Docs
+------------
 
 .. toctree::
     :maxdepth: 1
 
-    installation/platform_settings
+    installation/system_requirements
+    installation/update
+    installation/production
+    installation/developer_installation
+    tethys_portal/configuration
     installation/using_docker
     installation/web_admin_setup
     installation/application
 
-You also may want to jump over to the :ref:`tutorials` to begin developing your first app.

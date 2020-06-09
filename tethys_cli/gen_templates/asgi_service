@@ -1,12 +1,16 @@
 [fcgi-program:asgi]
+# Define Tethys Home
+environment=
+    TETHYS_HOME={{ tethys_home }}
+
 # TCP socket used by Nginx backend upstream
-socket=tcp://{{ hostname }}:{{ port }}
+socket=tcp://127.0.0.1:{{ port }}
 
 # Project files directory location
 directory={{ tethys_src }}
 
 # Each process needs to have a separate socket file, so we use process_num
-command={{ conda_home }}/envs/{{ conda_env_name }}/bin/daphne -u /run/asgi/tethys_asgi%(process_num)d.sock --fd 0 --access-log - --proxy-headers tethys_portal.asgi:application
+command=bash -c "source {{ conda_home }}/bin/activate tethys && {{ conda_prefix }}/bin/daphne -u /run/asgi/tethys_asgi%(process_num)d.sock --fd 0 --access-log - --proxy-headers tethys_portal.asgi:application"
 
 # Number of processes to startup, roughly the number of CPUs you have
 numprocs={{ asgi_processes }}

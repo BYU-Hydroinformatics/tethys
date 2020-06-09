@@ -1,4 +1,4 @@
-{% load static terms_tags analytical %}
+{% load static site_settings terms_tags analytical %}
 <!DOCTYPE html>
 
 {# Allows custom attributes to be added to the html tag #}
@@ -58,7 +58,7 @@
     {% endcomment %}
 
     {% block links %}
-      <link rel="shortcut icon" href="{% if site_globals.favicon %}{% static site_globals.favicon %}{% else %}{% static 'tethys_portal/images/default_favicon.png' %}{% endif %}" />
+      <link rel="shortcut icon" href="{% if site_globals.favicon and 'http' in site_globals.favicon %}{{ site_globals.favicon }}{% elif site_globals.favicon %}{% static site_globals.favicon %}{% else %}{% static 'tethys_portal/images/default_favicon.png' %}{% endif %}" />
     {% endblock %}
 
     {% comment "import_gizmos explanation" %}
@@ -94,6 +94,7 @@
       <link href="{% static 'tethys_portal/vendor/font-awesome/css/font-awesome.min.css' %}" rel="stylesheet" />
       <link href="{% static 'tethys_portal/vendor/bootstrap-social/bootstrap-social.css' %}" rel="stylesheet" />
       <link href="{% static 'tethys_portal/css/tethys_main.css' %}"  rel="stylesheet" />
+      {{ site_globals.portal_base_css|load_custom_css|safe }}
     {% endblock %}
 
     {% block global_scripts %}
