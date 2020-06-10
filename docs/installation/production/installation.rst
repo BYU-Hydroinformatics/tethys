@@ -24,7 +24,7 @@ Follow these steps to install Tethys Portal with the following considerations:
 
     .. code-block:: bash
 
-        conda create -n tethys -c tethysplatform -c conda-forge tethys-platform
+        conda create -n tethys -c tethysplatform -c conda-forge tethys-platform -y
         conda activate tethys
 
 2) Install Additional Software:

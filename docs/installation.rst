@@ -19,7 +19,7 @@ Also, be sure that the system you are using meets the minimum :ref:`system_reqs`
 
 To install the ``tethys-platform`` into a new conda environment then run the following commands::
 
-    conda create -n tethys -c tethysplatform -c conda-forge tethys-platform
+    conda create -n tethys -c tethysplatform -c conda-forge tethys-platform -y
     conda activate tethys
 
 
