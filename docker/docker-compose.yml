@@ -1,14 +1,17 @@
 version: "3.2"
 services:
   tethys:
-    container_name: tethyscore
-    image: tethysplatform/tethys-core
+    container_name: geoglows
+    image: geoglows:latest
+    volumes:
+      - /home/tethys/geoglows/tethys_files:/usr/lib/tethys
+      - /home/tethys/geoglows/tethys/thredds:/usr/lib/tethys/thredds
     build:
       cache_from:
         - tethysplatform/tethys-core
       context: ../
     ports:
-      - "80:80"
+      - "8004:80"
     environment:
       TETHYS_DB_SUPERUSER: "tethys_super"
       TETHYS_DB_SUPERUSER_PASS: "pass"
@@ -21,6 +24,9 @@ services:
   db:
     image: postgres
     restart: always
+    container_name: geoglows_db
     environment:
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "pass"
+    volumes:
+      - /home/tethys/geoglows/pgdata:/var/lib/postgresql/data
